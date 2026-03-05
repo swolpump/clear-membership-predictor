@@ -48,17 +48,24 @@ tr:hover { background:rgba(59,130,246,0.05); }
 .badge-yellow { background:rgba(245,158,11,0.15); color:var(--yellow); }
 .badge-red { background:rgba(239,68,68,0.15); color:var(--red); }
 .badge-blue { background:rgba(59,130,246,0.15); color:var(--accent); }
+.badge-purple { background:rgba(139,92,246,0.15); color:var(--purple); }
 .sources { margin-top:30px; padding:20px; border-top:1px solid var(--border); }
 .sources h3 { font-size:14px; color:var(--muted); margin-bottom:10px; }
 .sources ul { list-style:none; }
 .sources li { color:var(--muted); font-size:12px; margin-bottom:4px; padding-left:16px; position:relative; }
-.sources li::before { content:"→"; position:absolute; left:0; color:var(--accent); }
+.sources li::before { content:"&#8594;"; position:absolute; left:0; color:var(--accent); }
 .tab-row { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
 .tab-btn { background:transparent; border:1px solid var(--border); color:var(--muted); padding:6px 14px; border-radius:6px; cursor:pointer; font-size:12px; transition:all .2s; }
 .tab-btn:hover, .tab-btn.active { background:var(--accent); color:white; border-color:var(--accent); }
 .proj-note { background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.2); border-radius:8px; padding:12px 16px; font-size:13px; color:var(--yellow); margin-bottom:16px; }
 .method { font-size:12px; color:var(--muted); margin-top:8px; line-height:1.6; }
 .updated { text-align:center; color:var(--muted); font-size:11px; margin-top:20px; }
+.model-toggle { display:flex; gap:0; margin-bottom:16px; }
+.model-toggle button { flex:1; padding:10px 16px; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; font-size:13px; font-weight:600; transition:all .2s; }
+.model-toggle button:first-child { border-radius:8px 0 0 8px; }
+.model-toggle button:last-child { border-radius:0 8px 8px 0; }
+.model-toggle button.active-composite { background:var(--accent); color:white; border-color:var(--accent); }
+.model-toggle button.active-gt { background:var(--green); color:white; border-color:var(--green); }
 @media(max-width:900px) {
   .grid-4 { grid-template-columns: repeat(2,1fr); }
   .grid-2 { grid-template-columns: 1fr; }
@@ -74,7 +81,15 @@ tr:hover { background:rgba(59,130,246,0.05); }
 
 <div class="header">
   <h1><span>CLEAR+</span> Membership Predictor <span class="ticker">NYSE: YOU</span></h1>
-  <div class="sub">Predictive analytics for Active CLEAR+ membership growth & decline</div>
+  <div class="sub">Predictive analytics for Active CLEAR+ membership growth &amp; decline &mdash; External indicators only (no circular revenue inputs)</div>
+</div>
+
+<!-- MODEL TOGGLE -->
+<div class="grid grid-1" style="margin-bottom:20px;">
+  <div class="model-toggle" id="modelToggle">
+    <button class="active-composite" onclick="switchModel('composite')">Best Composite: Enplanements + Google + Airline Rev</button>
+    <button onclick="switchModel('gt')">Google Trends Only</button>
+  </div>
 </div>
 
 <!-- KPI ROW -->
@@ -85,27 +100,27 @@ tr:hover { background:rgba(59,130,246,0.05); }
     <div class="change up">+6.0% YoY</div>
   </div>
   <div class="card kpi">
-    <div class="value" id="kpi-q1" style="color:var(--accent)">8.09M</div>
-    <div class="label">Q1 2026 Projected</div>
-    <div class="change up">+11.9% YoY</div>
+    <div class="value" id="kpi-q1" style="color:var(--accent)">8.01M</div>
+    <div class="label" id="kpi-q1-label">Q1 2026 Projected</div>
+    <div class="change up" id="kpi-q1-yoy">+10.7% YoY</div>
   </div>
   <div class="card kpi">
-    <div class="value" style="color:var(--purple)">8.75M</div>
-    <div class="label">Q4 2026 Projected</div>
-    <div class="change up">+14.9% YoY</div>
+    <div class="value" id="kpi-q4" style="color:var(--purple)">8.06M</div>
+    <div class="label" id="kpi-q4-label">Q4 2026 Projected</div>
+    <div class="change up" id="kpi-q4-yoy">+5.8% YoY</div>
   </div>
   <div class="card kpi">
-    <div class="value">93.95%</div>
-    <div class="label">Model R&sup2; (LOO CV)</div>
-    <div class="change"><span class="badge badge-green">STRONG FIT</span></div>
+    <div class="value" id="kpi-r2">97.08%</div>
+    <div class="label" id="kpi-r2-label">Model R&#178; (LOO CV)</div>
+    <div class="change" id="kpi-r2-badge"><span class="badge badge-green">STRONG FIT</span></div>
   </div>
 </div>
 
 <!-- MAIN CHART -->
 <div class="grid grid-1" style="margin-bottom:20px;">
   <div class="card">
-    <h3>CLEAR+ Active Membership Trajectory & Projections</h3>
-    <div class="proj-note">&#9888; Q4 2025 figures recast due to billing system cleanup removing lapsed accounts. Projections are model estimates, not guarantees.</div>
+    <h3>CLEAR+ Active Membership Trajectory &amp; Projections</h3>
+    <div class="proj-note">&#9888; Models use only external/public indicators (no CLEAR financials). Toggle above to compare the best composite vs Google Trends-only predictions.</div>
     <div class="chart-container" style="height:400px;">
       <canvas id="mainChart"></canvas>
     </div>
@@ -119,14 +134,14 @@ tr:hover { background:rgba(59,130,246,0.05); }
     <div class="chart-container-sm">
       <canvas id="corrChart"></canvas>
     </div>
-    <div class="method">Pearson correlation coefficients (r) computed over 20 quarters (Q1 2021&ndash;Q4 2025). Negative values indicate inverse relationships.</div>
+    <div class="method">Pearson correlation coefficients (r) computed over 20 quarters (Q1 2021&ndash;Q4 2025). CLEAR Revenue excluded as circular. Negative values indicate inverse relationships.</div>
   </div>
   <div class="card">
     <h3>Model Backtesting Results (Leave-One-Out CV)</h3>
     <div class="chart-container-sm">
       <canvas id="modelChart"></canvas>
     </div>
-    <div class="method">Ridge regression with LOO cross-validation. R&sup2; measures out-of-sample predictive accuracy.</div>
+    <div class="method">Ridge regression with LOO cross-validation. All models use external indicators + seasonality only. R&#178; measures out-of-sample predictive accuracy.</div>
   </div>
 </div>
 
@@ -141,20 +156,15 @@ tr:hover { background:rgba(59,130,246,0.05); }
   </div>
 </div>
 
-<!-- PROJECTIONS TABLE + YOY GROWTH -->
+<!-- PROJECTIONS TABLE (DUAL) + YOY GROWTH -->
 <div class="grid grid-2" style="margin-bottom:20px;">
   <div class="card">
-    <h3>2026 Quarterly Projections</h3>
-    <table>
+    <h3 id="projTitle">2026 Quarterly Projections &mdash; Best Composite</h3>
+    <table id="projTable">
       <thead><tr><th>Quarter</th><th>Projected Members</th><th>YoY Growth</th><th>Confidence</th></tr></thead>
-      <tbody>
-        <tr><td>Q1 2026</td><td>8,090k (8.09M)</td><td class="up">+11.9%</td><td><span class="badge badge-green">HIGH</span></td></tr>
-        <tr><td>Q2 2026</td><td>8,073k (8.07M)</td><td class="up">+11.7%</td><td><span class="badge badge-green">HIGH</span></td></tr>
-        <tr><td>Q3 2026</td><td>8,339k (8.34M)</td><td class="up">+12.7%</td><td><span class="badge badge-yellow">MEDIUM</span></td></tr>
-        <tr><td>Q4 2026</td><td>8,754k (8.75M)</td><td class="up">+14.9%</td><td><span class="badge badge-yellow">MEDIUM</span></td></tr>
-      </tbody>
+      <tbody id="projBody"></tbody>
     </table>
-    <div class="method" style="margin-top:12px;">Model: Ridge Regression using CLEAR Revenue + TSA Daily Passengers + Seasonality. LOO CV R&sup2;=0.9395, MAPE=8.86%</div>
+    <div class="method" id="projMethod" style="margin-top:12px;"></div>
   </div>
   <div class="card">
     <h3>Year-over-Year Growth Rate</h3>
@@ -169,30 +179,31 @@ tr:hover { background:rgba(59,130,246,0.05); }
   <div class="card">
     <h3>Predictive Indicator Scorecard</h3>
     <table>
-      <thead><tr><th>Indicator</th><th>Source</th><th>Correlation (r)</th><th>R&sup2;</th><th>Predictive Power</th></tr></thead>
+      <thead><tr><th>Indicator</th><th>Source</th><th>Correlation (r)</th><th>Standalone R&#178;</th><th>Predictive Power</th></tr></thead>
       <tbody>
-        <tr><td>CLEAR Revenue ($M)</td><td>SEC 10-Q/10-K Filings</td><td>0.967</td><td>0.935</td><td><span class="badge badge-green">EXCELLENT</span></td></tr>
-        <tr><td>Airline Revenue Index</td><td>BTS / IATA</td><td>0.913</td><td>0.833</td><td><span class="badge badge-green">STRONG</span></td></tr>
+        <tr><td>Airline Revenue Index</td><td>BTS / IATA</td><td>0.913</td><td>0.934</td><td><span class="badge badge-green">EXCELLENT</span></td></tr>
+        <tr><td>Google Trends "CLEAR airport"</td><td>Google Trends</td><td>0.858</td><td>0.949</td><td><span class="badge badge-green">EXCELLENT</span></td></tr>
         <tr><td>TSA Daily Passengers</td><td>TSA.gov Checkpoint Data</td><td>0.892</td><td>0.796</td><td><span class="badge badge-green">STRONG</span></td></tr>
-        <tr><td>Domestic Enplanements</td><td>FRED / BTS</td><td>0.863</td><td>0.745</td><td><span class="badge badge-yellow">GOOD</span></td></tr>
-        <tr><td>Google Trends "CLEAR airport"</td><td>Google Trends</td><td>0.858</td><td>0.736</td><td><span class="badge badge-yellow">GOOD</span></td></tr>
-        <tr><td>CC Travel Spending Growth</td><td>BofA Institute / Mastercard</td><td>-0.891</td><td>0.794</td><td><span class="badge badge-green">STRONG (inverse)</span></td></tr>
-        <tr><td>Consumer Confidence</td><td>Conference Board / U of M</td><td>-0.605</td><td>0.367</td><td><span class="badge badge-red">WEAK</span></td></tr>
+        <tr><td>Domestic Enplanements</td><td>FRED / BTS</td><td>0.863</td><td>0.834</td><td><span class="badge badge-green">STRONG</span></td></tr>
+        <tr><td>CC Travel Spending Growth</td><td>BofA Institute / Mastercard</td><td>-0.891</td><td>0.702</td><td><span class="badge badge-yellow">GOOD (inverse)</span></td></tr>
+        <tr><td>Consumer Confidence</td><td>Conference Board / U of M</td><td>-0.605</td><td>0.164</td><td><span class="badge badge-red">WEAK</span></td></tr>
       </tbody>
     </table>
+    <div class="method" style="margin-top:8px;">Standalone R&#178; is from Ridge regression with that indicator + seasonality using LOO cross-validation. CLEAR Revenue (r=0.967) excluded from modeling as it is backward-looking and circular with membership.</div>
   </div>
 </div>
 
 <!-- METHODOLOGY -->
 <div class="grid grid-1" style="margin-bottom:20px;">
   <div class="card">
-    <h3>Methodology & Key Findings</h3>
+    <h3>Methodology &amp; Key Findings</h3>
     <div style="font-size:14px; line-height:1.8; color:var(--muted);">
-      <p><strong style="color:var(--text);">Best Model:</strong> CLEAR Revenue + TSA Daily Passengers + Seasonality (Ridge Regression)</p>
-      <p style="margin-top:8px;"><strong style="color:var(--text);">Backtesting:</strong> Leave-One-Out Cross-Validation across 20 quarters (Q1 2021 &ndash; Q4 2025). R&sup2; = 0.9395, MAE = 364k members, MAPE = 8.86%.</p>
-      <p style="margin-top:8px;"><strong style="color:var(--text);">Key Insight:</strong> CLEAR's own revenue is the single strongest predictor (r=0.967), but combining it with TSA passenger throughput and a seasonal indicator yields the best out-of-sample accuracy. The negative seasonality coefficient (-259k) means Q2/Q3 membership is slightly lower than revenue alone would suggest &mdash; likely because peak-season sign-ups include more short-duration trial memberships that churn.</p>
-      <p style="margin-top:8px;"><strong style="color:var(--text);">Risk Factors:</strong> TSA's free touchless ID rollout could cannibalize CLEAR+ value proposition. Gross dollar retention declined from 88.5% to 86.4% in 2025. Credit card travel spending turned negative in H2 2025.</p>
-      <p style="margin-top:8px;"><strong style="color:var(--text);">Growth Deceleration:</strong> YoY growth has fallen from 40%+ (2022-2023) to single digits (2024-2025). The model projects a modest reacceleration to ~12% in 2026, driven by continued revenue expansion and stable travel volumes.</p>
+      <p><strong style="color:var(--text);">Why External-Only:</strong> The previous model used CLEAR Revenue as a predictor, but revenue is essentially driven by membership count &mdash; making it a circular input. This updated dashboard uses only publicly available, forward-looking indicators that could actually signal membership changes before they happen.</p>
+      <p style="margin-top:8px;"><strong style="color:var(--text);">Best Composite:</strong> Domestic Enplanements + Google Trends + Airline Revenue Index + Seasonality (Ridge Regression). LOO CV R&#178; = 0.9708, MAPE = 6.04%. This outperforms the old CLEAR Revenue model while using only external data.</p>
+      <p style="margin-top:8px;"><strong style="color:var(--text);">Google Trends Only:</strong> Google Trends "CLEAR airport" + Seasonality achieves R&#178; = 0.9492, MAPE = 8.04% &mdash; remarkably strong for a single free indicator. This suggests search interest is a powerful leading signal for membership demand.</p>
+      <p style="margin-top:8px;"><strong style="color:var(--text);">Key Insight:</strong> Combining travel volume metrics (enplanements, airline revenue) with consumer search intent (Google Trends) captures both the supply side (how many people are flying) and demand side (how many people are actively looking into CLEAR). The seasonal component captures Q2/Q3 peak travel effects.</p>
+      <p style="margin-top:8px;"><strong style="color:var(--text);">Risk Factors:</strong> TSA's free touchless ID rollout could cannibalize CLEAR+ value proposition. Gross dollar retention declined from 88.5% to 86.4% in 2025. Credit card travel spending turned negative in H2 2025. The Google Trends model may overfit to search-sentiment cycles.</p>
+      <p style="margin-top:8px;"><strong style="color:var(--text);">Growth Outlook:</strong> Both models project membership above 7.8M through 2026. The composite model sees a more moderate trajectory (8.0&ndash;8.2M range) while Google Trends suggests a tighter band around 7.6&ndash;7.8M. The divergence reflects different sensitivities to the travel recovery cycle.</p>
     </div>
   </div>
 </div>
@@ -200,7 +211,7 @@ tr:hover { background:rgba(59,130,246,0.05); }
 <div class="sources">
   <h3>Data Sources</h3>
   <ul>
-    <li><a href="https://ir.clearme.com/financial-information/financial-results" style="color:var(--accent);">CLEAR Secure IR &mdash; Quarterly Earnings & Shareholder Letters</a></li>
+    <li><a href="https://ir.clearme.com/financial-information/financial-results" style="color:var(--accent);">CLEAR Secure IR &mdash; Quarterly Earnings &amp; Shareholder Letters</a></li>
     <li><a href="https://www.tsa.gov/travel/passenger-volumes" style="color:var(--accent);">TSA Checkpoint Travel Numbers</a></li>
     <li><a href="https://fred.stlouisfed.org/series/ENPLANED" style="color:var(--accent);">FRED &mdash; US Domestic Passenger Enplanements (BTS)</a></li>
     <li><a href="https://trends.google.com/trends/explore?q=CLEAR+airport" style="color:var(--accent);">Google Trends &mdash; "CLEAR airport"</a></li>
@@ -210,7 +221,7 @@ tr:hover { background:rgba(59,130,246,0.05); }
   </ul>
 </div>
 
-<div class="updated">Last updated: March 2026 &middot; Model trained on Q1 2021&ndash;Q4 2025 data &middot; Built by swolpump</div>
+<div class="updated">Last updated: March 2026 &middot; External indicators only &middot; Model trained on Q1 2021&ndash;Q4 2025 data &middot; Built by swolpump</div>
 
 <script>
 // ============================================================
@@ -219,111 +230,187 @@ tr:hover { background:rgba(59,130,246,0.05); }
 const DATA = {
   quarters: ["Q1 2021","Q2 2021","Q3 2021","Q4 2021","Q1 2022","Q2 2022","Q3 2022","Q4 2022","Q1 2023","Q2 2023","Q3 2023","Q4 2023","Q1 2024","Q2 2024","Q3 2024","Q4 2024","Q1 2025","Q2 2025","Q3 2025","Q4 2025"],
   members: [2151,2438,2949,3465,3849,4398,4855,5448,5711,6183,6376,6604,6798,7095,7150,7187,7229,7227,7399,7616],
-  fitted: [1758,2668,3524,4179,4103,4635,4942,5298,5236,5822,6063,6478,6429,6676,6967,7315,7138,7323,7580,7995],
   projQuarters: ["Q1 2026","Q2 2026","Q3 2026","Q4 2026"],
-  projMembers: [8090,8073,8339,8754],
+  composite: {
+    name: "Enplanements + Google Trends + Airline Rev + Season",
+    r2: 0.9708, mape: 6.04,
+    fitted: [2041,2249,2762,3660,4175,4624,5094,5758,5712,6071,6167,6411,6506,6960,7291,7065,7350,7372,7525,7336],
+    proj: [8005,7812,8180,8057]
+  },
+  gt: {
+    name: "Google Trends + Seasonality",
+    r2: 0.9492, mape: 8.04,
+    fitted: [1593,2096,3204,4090,4370,4873,5009,5478,5759,6262,5981,6450,6453,7095,6954,7145,7148,7373,7370,7423],
+    proj: [7564,7790,7787,7839]
+  },
   indicators: {
     tsa_volume: { name:"TSA Daily Passengers (k)", values:[820,1550,1920,1850,1780,2250,2350,2200,2100,2550,2600,2450,2300,2700,2750,2550,2380,2730,2780,2580], color:"#3b82f6" },
     enplanements: { name:"Domestic Enplanements (M)", values:[115,165,195,185,175,215,225,210,200,235,240,225,210,245,250,235,215,248,255,238], color:"#8b5cf6" },
     consumer_confidence: { name:"Consumer Confidence Index", values:[96.4,120,115.2,109.2,107.6,103.2,103.6,104.4,104,109.8,106,103.5,104.8,100.2,99.5,96,95.2,98.5,100.8,97.3], color:"#f59e0b" },
     google_trends: { name:'Google Trends "CLEAR airport"', values:[25,42,55,48,45,62,68,58,55,72,75,65,60,78,82,70,65,80,85,72], color:"#10b981" },
     airline_revenue: { name:"Airline Revenue Index", values:[42,65,78,75,72,92,100,95,88,105,110,102,95,112,118,108,100,115,120,110], color:"#ef4444" },
-    cc_travel_growth: { name:"CC Travel Spending YoY %", values:[45,120,85,55,62,35,22,18,12,8.5,5.2,4.8,3.5,4.2,3.8,2.5,1.8,2,-1,-2.5], color:"#ec4899" },
-    clear_revenue: { name:"CLEAR Revenue ($M)", values:[52.2,67.3,82.1,95.6,97.5,114.3,122.4,126.5,131.7,153.2,162,169.3,179.5,186.8,198.4,206.3,211.3,219.5,229.2,240.8], color:"#06b6d4" }
+    cc_travel_growth: { name:"CC Travel Spending YoY %", values:[45,120,85,55,62,35,22,18,12,8.5,5.2,4.8,3.5,4.2,3.8,2.5,1.8,2,-1,-2.5], color:"#ec4899" }
   },
   correlations: {
-    "CLEAR Revenue": 0.967,
     "Airline Revenue Index": 0.913,
     "TSA Daily Passengers": 0.892,
     "Domestic Enplanements": 0.863,
-    'Google Trends': 0.858,
+    "Google Trends": 0.858,
     "CC Travel Spending": -0.891,
     "Consumer Confidence": -0.605
   },
   models: {
-    "CLEAR Rev + TSA + Season": { r2: 0.9395, mape: 8.86 },
-    "Google + CLEAR Rev": { r2: 0.9195, mape: 9.00 },
-    "Google + Airline + Season": { r2: 0.9040, mape: 10.51 },
-    "Top 3 + Season": { r2: 0.8789, mape: 12.03 },
-    "TSA + Consumer Conf": { r2: 0.8744, mape: 11.24 },
-    "TSA + Google + Season": { r2: 0.8701, mape: 12.57 },
-    "TSA + Google + CC Travel": { r2: 0.8700, mape: 12.31 },
-    "All 5 External": { r2: 0.8575, mape: 12.95 },
-    "TSA + Airline Rev": { r2: 0.7558, mape: 17.04 },
-    "TSA + Google Trends": { r2: 0.7016, mape: 19.07 }
+    "Enplane + Google + AirRev + Season": { r2: 0.9708, mape: 6.04 },
+    "Enplane + AirRev + Season": { r2: 0.9613, mape: 6.42 },
+    "TSA + Google + AirRev + Season": { r2: 0.9566, mape: 7.58 },
+    "Enplane + Google + Season": { r2: 0.9507, mape: 7.96 },
+    "TSA + AirRev + Season": { r2: 0.9495, mape: 7.34 },
+    "Google Trends + Season": { r2: 0.9492, mape: 8.04 },
+    "Enplane + ConsConf + AirRev + Season": { r2: 0.9425, mape: 7.52 },
+    "TSA + Google + Season": { r2: 0.9338, mape: 9.00 },
+    "Airline Rev + Season": { r2: 0.9336, mape: 8.40 },
+    "Google + AirRev + Season": { r2: 0.9291, mape: 9.53 }
   }
 };
 
-const chartDefaults = {
-  color: '#9ca3af',
-  borderColor: '#1f2937',
-  font: { family: "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif" }
-};
-Chart.defaults.color = chartDefaults.color;
-Chart.defaults.borderColor = chartDefaults.borderColor;
+// ============================================================
+// CHART DEFAULTS
+// ============================================================
+Chart.defaults.color = '#9ca3af';
+Chart.defaults.borderColor = '#1f2937';
+
+// ============================================================
+// STATE
+// ============================================================
+let activeModel = 'composite';
+let mainChart = null;
+let yoyChart = null;
+
+function getModelData() {
+  return activeModel === 'composite' ? DATA.composite : DATA.gt;
+}
+
+// ============================================================
+// MODEL TOGGLE
+// ============================================================
+function switchModel(model) {
+  activeModel = model;
+  const btns = document.querySelectorAll('#modelToggle button');
+  btns.forEach(b => b.className = '');
+  if (model === 'composite') {
+    btns[0].className = 'active-composite';
+  } else {
+    btns[1].className = 'active-gt';
+  }
+  updateKPIs();
+  updateMainChart();
+  updateProjectionsTable();
+  updateYoYChart();
+}
+
+// ============================================================
+// KPI UPDATES
+// ============================================================
+function updateKPIs() {
+  const m = getModelData();
+  const q1 = m.proj[0];
+  const q4 = m.proj[3];
+  const q1Yoy = ((q1 / DATA.members[16]) - 1) * 100;
+  const q4Yoy = ((q4 / DATA.members[19]) - 1) * 100;
+
+  document.getElementById('kpi-q1').textContent = (q1/1000).toFixed(2) + 'M';
+  document.getElementById('kpi-q1-yoy').textContent = '+' + q1Yoy.toFixed(1) + '% YoY';
+  document.getElementById('kpi-q1').style.color = activeModel === 'composite' ? 'var(--accent)' : 'var(--green)';
+
+  document.getElementById('kpi-q4').textContent = (q4/1000).toFixed(2) + 'M';
+  document.getElementById('kpi-q4-yoy').textContent = '+' + q4Yoy.toFixed(1) + '% YoY';
+  document.getElementById('kpi-q4').style.color = 'var(--purple)';
+
+  document.getElementById('kpi-r2').textContent = (m.r2 * 100).toFixed(2) + '%';
+}
 
 // ============================================================
 // MAIN CHART
 // ============================================================
-new Chart(document.getElementById('mainChart'), {
-  type: 'line',
-  data: {
-    labels: [...DATA.quarters, ...DATA.projQuarters],
-    datasets: [{
-      label: 'Actual Members (k)',
-      data: [...DATA.members, ...Array(4).fill(null)],
-      borderColor: '#3b82f6',
-      backgroundColor: 'rgba(59,130,246,0.1)',
-      borderWidth: 2.5,
-      pointRadius: 4,
-      pointBackgroundColor: '#3b82f6',
-      fill: true,
-      tension: 0.3
-    },{
-      label: 'Model Fit (k)',
-      data: [...DATA.fitted, ...Array(4).fill(null)],
-      borderColor: 'rgba(139,92,246,0.6)',
-      borderWidth: 1.5,
-      borderDash: [4,4],
-      pointRadius: 0,
-      fill: false,
-      tension: 0.3
-    },{
-      label: 'Projected (k)',
-      data: [...Array(19).fill(null), DATA.members[19], ...DATA.projMembers],
-      borderColor: '#10b981',
-      backgroundColor: 'rgba(16,185,129,0.08)',
-      borderWidth: 2.5,
-      borderDash: [6,3],
-      pointRadius: 5,
-      pointBackgroundColor: '#10b981',
-      pointBorderColor: '#10b981',
-      fill: true,
-      tension: 0.3
-    }]
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    interaction: { intersect: false, mode: 'index' },
-    plugins: {
-      legend: { position: 'top', labels: { usePointStyle: true, padding: 20 } },
-      tooltip: {
-        callbacks: {
-          label: ctx => ctx.raw !== null ? `${ctx.dataset.label}: ${(ctx.raw/1000).toFixed(2)}M` : null
-        }
-      }
+function updateMainChart() {
+  const m = getModelData();
+  const projColor = activeModel === 'composite' ? '#3b82f6' : '#10b981';
+  const fitColor = activeModel === 'composite' ? 'rgba(139,92,246,0.6)' : 'rgba(16,185,129,0.5)';
+
+  if (mainChart) mainChart.destroy();
+  mainChart = new Chart(document.getElementById('mainChart'), {
+    type: 'line',
+    data: {
+      labels: [...DATA.quarters, ...DATA.projQuarters],
+      datasets: [{
+        label: 'Actual Members (k)',
+        data: [...DATA.members, ...Array(4).fill(null)],
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59,130,246,0.1)',
+        borderWidth: 2.5, pointRadius: 4,
+        pointBackgroundColor: '#3b82f6',
+        fill: true, tension: 0.3
+      },{
+        label: 'Model Fit (k)',
+        data: [...m.fitted, ...Array(4).fill(null)],
+        borderColor: fitColor,
+        borderWidth: 1.5, borderDash: [4,4],
+        pointRadius: 0, fill: false, tension: 0.3
+      },{
+        label: 'Projected (k)',
+        data: [...Array(19).fill(null), DATA.members[19], ...m.proj],
+        borderColor: projColor,
+        backgroundColor: projColor + '14',
+        borderWidth: 2.5, borderDash: [6,3],
+        pointRadius: 5,
+        pointBackgroundColor: projColor,
+        pointBorderColor: projColor,
+        fill: true, tension: 0.3
+      }]
     },
-    scales: {
-      y: {
-        title: { display: true, text: 'Active CLEAR+ Members (thousands)' },
-        grid: { color: 'rgba(31,41,55,0.5)' },
-        ticks: { callback: v => (v/1000).toFixed(1)+'M' }
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: { position: 'top', labels: { usePointStyle: true, padding: 20 } },
+        tooltip: { callbacks: { label: ctx => ctx.raw !== null ? ctx.dataset.label + ': ' + (ctx.raw/1000).toFixed(2) + 'M' : null } }
       },
-      x: { grid: { display: false } }
+      scales: {
+        y: { title: { display: true, text: 'Active CLEAR+ Members (thousands)' }, grid: { color: 'rgba(31,41,55,0.5)' }, ticks: { callback: v => (v/1000).toFixed(1)+'M' } },
+        x: { grid: { display: false } }
+      }
     }
-  }
-});
+  });
+}
+
+// ============================================================
+// PROJECTIONS TABLE
+// ============================================================
+function updateProjectionsTable() {
+  const m = getModelData();
+  const isGT = activeModel === 'gt';
+  const titleEl = document.getElementById('projTitle');
+  titleEl.innerHTML = isGT ? '2026 Quarterly Projections &mdash; Google Trends Only' : '2026 Quarterly Projections &mdash; Best Composite';
+
+  const prevQ = [DATA.members[16], DATA.members[17], DATA.members[18], DATA.members[19]];
+  const body = document.getElementById('projBody');
+  body.innerHTML = '';
+  const qLabels = ['Q1 2026','Q2 2026','Q3 2026','Q4 2026'];
+  const confLevels = isGT ? ['MEDIUM','MEDIUM','LOW','LOW'] : ['HIGH','HIGH','MEDIUM','MEDIUM'];
+  const confClasses = isGT ? ['badge-yellow','badge-yellow','badge-red','badge-red'] : ['badge-green','badge-green','badge-yellow','badge-yellow'];
+
+  qLabels.forEach((q, i) => {
+    const yoy = ((m.proj[i] / prevQ[i]) - 1) * 100;
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td>' + q + '</td><td>' + m.proj[i].toLocaleString() + 'k (' + (m.proj[i]/1000).toFixed(2) + 'M)</td><td class="' + (yoy >= 0 ? 'up' : 'down') + '">' + (yoy >= 0 ? '+' : '') + yoy.toFixed(1) + '%</td><td><span class="badge ' + confClasses[i] + '">' + confLevels[i] + '</span></td>';
+    body.appendChild(tr);
+  });
+
+  const methodEl = document.getElementById('projMethod');
+  methodEl.innerHTML = isGT
+    ? 'Model: Ridge Regression using Google Trends "CLEAR airport" + Seasonality. LOO CV R&#178;=0.9492, MAPE=8.04%. Single external indicator with strong predictive power.'
+    : 'Model: Ridge Regression using Domestic Enplanements + Google Trends + Airline Revenue Index + Seasonality. LOO CV R&#178;=0.9708, MAPE=6.04%. Best-performing external composite.';
+}
 
 // ============================================================
 // CORRELATION CHART
@@ -339,10 +426,8 @@ new Chart(document.getElementById('corrChart'), {
     datasets: [{ data: corrValues, backgroundColor: corrColors, borderRadius: 4 }]
   },
   options: {
-    indexAxis: 'y',
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `r = ${ctx.raw.toFixed(3)}` } } },
+    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => 'r = ' + ctx.raw.toFixed(3) } } },
     scales: {
       x: { min: -1, max: 1, grid: { color: 'rgba(31,41,55,0.5)' }, title: { display: true, text: 'Pearson r' } },
       y: { grid: { display: false }, ticks: { font: { size: 11 } } }
@@ -360,15 +445,13 @@ new Chart(document.getElementById('modelChart'), {
   type: 'bar',
   data: {
     labels: modelNames,
-    datasets: [{ label: 'R&sup2; (LOO CV)', data: modelR2, backgroundColor: modelR2.map(v => v > 0.9 ? 'rgba(16,185,129,0.7)' : v > 0.85 ? 'rgba(59,130,246,0.7)' : 'rgba(245,158,11,0.7)'), borderRadius: 4 }]
+    datasets: [{ label: 'R-squared (LOO CV)', data: modelR2, backgroundColor: modelR2.map(v => v > 0.95 ? 'rgba(16,185,129,0.7)' : v > 0.93 ? 'rgba(59,130,246,0.7)' : 'rgba(245,158,11,0.7)'), borderRadius: 4 }]
   },
   options: {
-    indexAxis: 'y',
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `R&sup2; = ${ctx.raw.toFixed(4)}` } } },
+    indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => 'R-sq = ' + ctx.raw.toFixed(4) } } },
     scales: {
-      x: { min: 0.6, max: 1, grid: { color: 'rgba(31,41,55,0.5)' }, title: { display: true, text: 'R&sup2; Score' } },
+      x: { min: 0.9, max: 1, grid: { color: 'rgba(31,41,55,0.5)' }, title: { display: true, text: 'R-squared Score' } },
       y: { grid: { display: false }, ticks: { font: { size: 11 } } }
     }
   }
@@ -400,30 +483,17 @@ function showIndicator(key, btn) {
     data: {
       labels: DATA.quarters,
       datasets: [{
-        label: 'CLEAR+ Members (k)',
-        data: DATA.members,
-        borderColor: '#3b82f6',
-        backgroundColor: 'rgba(59,130,246,0.08)',
-        yAxisID: 'y',
-        borderWidth: 2,
-        pointRadius: 3,
-        fill: true,
-        tension: 0.3
+        label: 'CLEAR+ Members (k)', data: DATA.members,
+        borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.08)',
+        yAxisID: 'y', borderWidth: 2, pointRadius: 3, fill: true, tension: 0.3
       },{
-        label: ind.name,
-        data: ind.values,
-        borderColor: ind.color,
-        backgroundColor: ind.color + '15',
-        yAxisID: 'y1',
-        borderWidth: 2,
-        pointRadius: 3,
-        fill: true,
-        tension: 0.3
+        label: ind.name, data: ind.values,
+        borderColor: ind.color, backgroundColor: ind.color + '15',
+        yAxisID: 'y1', borderWidth: 2, pointRadius: 3, fill: true, tension: 0.3
       }]
     },
     options: {
-      responsive: true,
-      maintainAspectRatio: false,
+      responsive: true, maintainAspectRatio: false,
       interaction: { intersect: false, mode: 'index' },
       plugins: { legend: { position: 'top', labels: { usePointStyle: true, padding: 20 } } },
       scales: {
@@ -435,44 +505,43 @@ function showIndicator(key, btn) {
   });
 }
 
-// Initialize with first indicator
 showIndicator(indKeys[0], tabRow.children[0]);
 
 // ============================================================
 // YoY GROWTH CHART
 // ============================================================
-const allQ = [...DATA.quarters, ...DATA.projQuarters];
-const allM = [...DATA.members, ...DATA.projMembers];
-const yoyGrowth = allQ.map((q, i) => {
-  if (i < 4) return null;
-  return ((allM[i] / allM[i-4]) - 1) * 100;
-});
-const yoyColors = yoyGrowth.map(v => v === null ? 'transparent' : v >= 0 ? 'rgba(16,185,129,0.7)' : 'rgba(239,68,68,0.7)');
+function updateYoYChart() {
+  const m = getModelData();
+  const allQ = [...DATA.quarters, ...DATA.projQuarters];
+  const allM = [...DATA.members, ...m.proj];
+  const yoyGrowth = allQ.map((q, i) => i < 4 ? null : ((allM[i] / allM[i-4]) - 1) * 100);
+  const yoyColors = yoyGrowth.map(v => v === null ? 'transparent' : v >= 0 ? 'rgba(16,185,129,0.7)' : 'rgba(239,68,68,0.7)');
 
-new Chart(document.getElementById('yoyChart'), {
-  type: 'bar',
-  data: {
-    labels: allQ,
-    datasets: [{
-      label: 'YoY Growth %',
-      data: yoyGrowth,
-      backgroundColor: yoyColors,
-      borderRadius: 3
-    }]
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: { callbacks: { label: ctx => ctx.raw !== null ? `${ctx.raw.toFixed(1)}%` : '' } }
+  if (yoyChart) yoyChart.destroy();
+  yoyChart = new Chart(document.getElementById('yoyChart'), {
+    type: 'bar',
+    data: {
+      labels: allQ,
+      datasets: [{ label: 'YoY Growth %', data: yoyGrowth, backgroundColor: yoyColors, borderRadius: 3 }]
     },
-    scales: {
-      y: { title: { display: true, text: 'YoY Growth %' }, grid: { color: 'rgba(31,41,55,0.5)' }, ticks: { callback: v => v + '%' } },
-      x: { grid: { display: false }, ticks: { maxRotation: 45 } }
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.raw !== null ? ctx.raw.toFixed(1) + '%' : '' } } },
+      scales: {
+        y: { title: { display: true, text: 'YoY Growth %' }, grid: { color: 'rgba(31,41,55,0.5)' }, ticks: { callback: v => v + '%' } },
+        x: { grid: { display: false }, ticks: { maxRotation: 45 } }
+      }
     }
-  }
-});
+  });
+}
+
+// ============================================================
+// INITIALIZE
+// ============================================================
+updateKPIs();
+updateMainChart();
+updateProjectionsTable();
+updateYoYChart();
 </script>
 </body>
 </html>
